@@ -1,24 +1,42 @@
 var http = require("http");
 var app;
 module.exports = function () {
-
     app = function(req, res) {
-        var current = 0;
-        var next = function() {
+        var current = -1;
+        var error;
+        var next = function(err) {
+            error = err;
             current += 1;
             if (current < app.stack.length) {
-                app.stack[current](req, res, next);
+                var handler = app.stack[current];
+                if (!error && handler.length == 4)
+                    next();
+                else if (error && handler.length == 4)
+                    handler(err, req, res, next);
+                else
+                    handler(req, res, next);
             }
             else {
-                res.end("404 - Not Found");
+                if (error) {
+                    res.end("500 - Internal Error");
+                }
+                else {
+                    res.end("404 - Not Found");
+                }
             }
         };
+
 
         if (app.stack.length == 0) {
             res.end("404 - Not Found");
         }
         else {
-            app.stack[0](req, res, next);
+            try {
+                next();
+            }
+            catch (err) {
+                next(err);
+            }
         }
     };
 

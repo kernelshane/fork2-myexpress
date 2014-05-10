@@ -83,6 +83,40 @@ describe("app", function() {
         it("should 404 if no middleware is added", function(done) {
             request(app).get("/").expect("404 - Not Found").end(done);
         });
-    });
 
+        it("should return 500 for unhandled error", function(done) {
+            var m1 = function(req, res, next) {
+                next(new Error("boom!"));
+            };
+            app.use(m1);
+            request(app).get("/").expect("500 - Internal Error").end(done);
+        });
+
+        it("should return 500 for uncaught error", function(done) {
+            var m1 = function(req, res, next) {
+                throw new Error("boom!");
+            };
+
+            app.use(m1);
+            request(app).get("/").expect("500 - Internal Error").end(done);
+        });
+
+        it("should skip error handlers when next is called without an error", function(done) {
+            var m1 = function(req, res, next) {
+                next();
+            };
+
+            var e1 = function(err, req, res, next) {
+            };
+
+            var m2 = function(req, res, next) {
+                res.end("m2");
+            };
+
+            app.use(m1);
+            app.use(e1);
+            app.use(m2);
+            request(app).get("/").expect("m2").end(done);
+        });
+    });
 });
