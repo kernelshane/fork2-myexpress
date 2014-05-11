@@ -119,4 +119,38 @@ describe("app", function() {
             request(app).get("/").expect("m2").end(done);
         });
     });
+
+    describe("Implement app embedding as middleware", function() {
+        var app;
+        var subApp;
+        beforeEach(function() {
+            app = new express();
+            subApp = new express();
+        });
+
+        it("should pass unhandled request to parent", function(done) {
+            var m2 = function(req, res, next) {
+                res.end("m2");
+            };
+
+            app.use(subApp);
+            app.use(m2);
+            request(app).get("/").expect("m2").end(done)
+        });
+
+        it("should pass unhandled error to parent", function(done) {
+            var m1 = function(req, res, next) {
+                next("m1 error");
+            };
+
+            var e1 = function(err, req, res, next) {
+                res.end(err);
+            };
+
+            subApp.use(m1);
+            app.use(subApp);
+            app.use(e1);
+            request(app).get("/").expect("m1 error").end(done);
+        });
+    });
 });

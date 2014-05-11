@@ -1,55 +1,67 @@
-var http = require("http");
-var app;
-module.exports = function () {
-    app = function(req, res) {
-        var current = -1;
-        var error;
-        var next = function(err) {
-            error = err;
-            current += 1;
-            if (current < app.stack.length) {
-                var handler = app.stack[current];
-                if (!error && handler.length == 4)
-                    next();
-                else if (error && handler.length == 4)
-                    handler(err, req, res, next);
-                else
-                    handler(req, res, next);
-            }
-            else {
-                if (error) {
-                    res.end("500 - Internal Error");
-                }
-                else {
-                    res.end("404 - Not Found");
-                }
-            }
-        };
+var http = require('http');
 
 
-        if (app.stack.length == 0) {
-            res.end("404 - Not Found");
+module.exports = function() {
+  var index = 0;
+  var app = function(req, res, next) {
+    app.handle(req, res, next);
+  };
+
+  app.handle = function(req, res, out) {
+    var stack = this.stack;
+    function next(err) {
+      var layer = stack[index++];
+      if (!layer) {
+        if(err) {
+          if(out) out(err);
+          res.statusCode = 500;
+          res.end('500 - Internal Error');
+        } else {
+          if(out) out();
+          res.statusCode = 404;
+          res.end('404 - Not Found');
         }
-        else {
-            try {
-                next();
-            }
-            catch (err) {
-                next(err);
-            }
+        return;
+      }
+
+      try {
+        var arity = layer.handle.length;
+        if (err) {
+          if (arity === 4) {
+            layer.handle(err, req, res, next);
+          } else {
+            next(err);
+          }
+        } else if (arity < 4) {
+          layer.handle(req, res, next);
+        } else {
+          next();
         }
-    };
+      } catch(e) {
+        next(e);
+      }
+    }
 
-    app.stack = [];
+    next();
 
-    app.listen = function(port) {
-        var server = http.createServer(this);
-        return server.listen.apply(server, arguments);
-    };
+  };
 
-    app.use = function(func) {
-        this.stack.push(func);
-    };
+  app.use = function(fn) {
+    if ('function' == typeof fn.handle) {
+      var server = fn;
+      fn = function(req, res, next) {
+        server.handle(req, res, next);
+      };
+    }
+    this.stack.push({handle: fn});
+    return this;
+  };
 
-    return app;
+  app.listen = function() {
+    var server = http.createServer(this);
+    return server.listen.apply(server, arguments);
+  };
+  
+  app.stack = [];
+  return app;
 };
