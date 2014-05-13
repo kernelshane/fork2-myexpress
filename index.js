@@ -24,7 +24,9 @@ module.exports = function() {
             }
 
           try {
-                if (layer.match(req.url) !== undefined) {
+                var matchinfo = layer.match(req.url);
+                if (matchinfo !== undefined) {
+                    req.params = matchinfo.params;
                     var arity = layer.handle.length;
                     if (err) {
                         if (arity === 4) {
@@ -51,8 +53,6 @@ module.exports = function() {
     };
 
     app.use = function(path, func) {
-        path = arguments[1] ? arguments[0] : "/";
-        func = arguments[1] ? arguments[1] : arguments[0];
         if ('function' == typeof func.handle) {
             var server = func;
             func = function(req, res, next) {
