@@ -27,6 +27,13 @@ module.exports = function() {
                 var matchinfo = layer.match(req.url);
                 if (matchinfo !== undefined) {
                     req.params = matchinfo.params;
+                    if (typeof layer.handle == 'function') {
+                        var server = layer.handle;
+                        layer.handle = function(req, res, next) {
+                            server.handle(req, res, next)
+                        };
+                        req.url = req.url.slice(matchinfo.path.length);
+                    }
                     var arity = layer.handle.length;
                     if (err) {
                         if (arity === 4) {
@@ -53,12 +60,6 @@ module.exports = function() {
     };
 
     app.use = function(path, func) {
-        if ('function' == typeof func.handle) {
-            var server = func;
-            func = function(req, res, next) {
-                server.handle(req, res, next);
-            };
-        }
         var layer = new Layer(path, func);
         this.stack.push(layer);
         return this;
