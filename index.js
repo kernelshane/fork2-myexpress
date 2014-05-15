@@ -2,11 +2,13 @@ var http = require('http');
 var Layer = require('./lib/layer');
 var makeRoute = require('./lib/route');
 var methods = require('methods');
+methods.push('all');
+
 module.exports = function() {
     var app = function(req, res, next) {
         app.handle(req, res, next);
     };
-    
+
     app.handle = function(req, res, out) {
         var index = 0;
         var stack = this.stack;
@@ -81,14 +83,20 @@ module.exports = function() {
     };
     */
 
+    app.route = function(path) {
+        var route = makeRoute();
+        var layer = new Layer(path, route);
+        this.stack.push(layer);
+        return route;
+    }
+
     methods.forEach(function(method) {
-        app[method] = function(path, func) {
-            func = makeRoute(method, func);
-            var layer = new Layer(path, func, {end: true});
-            this.stack.push(layer);
+        app[method] = function(path, handler) {
+            var route = app.route(path);
+            route[method](handler);
             return this;
-        };
-    });
+        }
+    })
 
     app.listen = function() {
         var server = http.createServer(this);
