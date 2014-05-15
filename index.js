@@ -4,47 +4,57 @@ module.exports = function() {
     var app = function(req, res, next) {
         app.handle(req, res, next);
     };
-
+    
     app.handle = function(req, res, out) {
         var index = 0;
         var stack = this.stack;
+        var restore_url = null;
         function next(err) {
             var layer = stack[index++];
             if (!layer) {
                 if (err) {
                     if (out) out(err);
                     res.statusCode = 500;
-                    res.end('500 - Internal Error');
+                    res.end();
                 } else {
                     if (out) out();
                     res.statusCode = 404;
-                    res.end('404 - Not Found');
+                    res.end();
                 }
                 return;
             }
 
           try {
+                if (restore_url != null) {
+                    req.url = restore_url;
+                    restore_url = null;
+                }
                 var path_param = layer.match(req.url);
                 if (path_param !== undefined) {
                     req.params = path_param.params;
-
                     var arity = layer.handle.length;
+                    var func = layer.handle;
+
+                    if (typeof func.handle === 'function') {
+                        restore_url = req.url;
+                        req.url = req.url.slice(path_param.path.length) || "/";
+                    } 
+
                     if (err) {
                         if (arity === 4) {
-                            index = 0;
-                            layer.handle(err, req, res, next);
+                            func(err, req, res, next);
                         } else {
                             next(err);
                         }
                     } else if (arity < 4) {
-                        index = 0;
-                        layer.handle(req, res, next);
+                        func(req, res, next);
                     } else {
                         next();
                     }
                 }
-                else 
+                else {
                     next(err);
+                }
           } catch (e) {
               next(e);
           }
