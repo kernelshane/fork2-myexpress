@@ -1,12 +1,12 @@
 var http = require('http');
 var Layer = require('./lib/layer');
 module.exports = function() {
-    var index = 0;
     var app = function(req, res, next) {
         app.handle(req, res, next);
     };
 
     app.handle = function(req, res, out) {
+        var index = 0;
         var stack = this.stack;
         function next(err) {
             var layer = stack[index++];
@@ -24,16 +24,10 @@ module.exports = function() {
             }
 
           try {
-                var matchinfo = layer.match(req.url);
-                if (matchinfo !== undefined) {
-                    req.params = matchinfo.params;
-                    if (typeof layer.handle == 'function') {
-                        var server = layer.handle;
-                        layer.handle = function(req, res, next) {
-                            server.handle(req, res, next)
-                        };
-                        req.url = req.url.slice(matchinfo.path.length);
-                    }
+                var path_param = layer.match(req.url);
+                if (path_param !== undefined) {
+                    req.params = path_param.params;
+
                     var arity = layer.handle.length;
                     if (err) {
                         if (arity === 4) {
@@ -49,7 +43,8 @@ module.exports = function() {
                         next();
                     }
                 }
-                else next(err);
+                else 
+                    next(err);
           } catch (e) {
               next(e);
           }
