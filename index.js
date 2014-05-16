@@ -2,6 +2,7 @@ var http = require('http');
 var Layer = require('./lib/layer');
 var makeRoute = require('./lib/route');
 var methods = require('methods');
+var createInjector = require('./lib/injector');
 methods.push('all');
 
 module.exports = function() {
@@ -103,6 +104,17 @@ module.exports = function() {
         return server.listen.apply(server, arguments);
     };
 
+    app.factory = function(name, fn) {
+        this._factories[name] = fn;
+    };
+
+    app.inject = function(handler) {
+        var injector = createInjector(handler, this);
+        return injector;
+    }
+
+
     app.stack = [];
+    app._factories = {};
     return app;
 };
