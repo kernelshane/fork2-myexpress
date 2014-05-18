@@ -70,19 +70,15 @@ module.exports = function() {
     };
 
     app.use = function(path, func) {
+        if(!func)
+            func = path
+
         var layer = new Layer(path, func);
         this.stack.push(layer);
+        
         return this;
     };
 
-    /*
-        app.get = function(path, handler) {
-        handler = makeRoute('get', handler);
-        var layer = new Layer(path, handler, {end: true});
-        this.stack.push(layer);
-        return this;
-    };
-    */
 
     app.route = function(path) {
         var route = makeRoute();
@@ -106,6 +102,14 @@ module.exports = function() {
 
     app.factory = function(name, fn) {
         this._factories[name] = fn;
+        this.stack.forEach(function(layer) {
+            var func = layer.handle
+            if(typeof func.handle == 'function') {
+                if(!func._factories.hasOwnProperty(name))
+                    func._factories[name] = fn;
+            }
+        });
+                
     };
 
     app.inject = function(handler) {
