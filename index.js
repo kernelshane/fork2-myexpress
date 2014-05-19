@@ -2,11 +2,15 @@ var http = require('http');
 var Layer = require('./lib/layer');
 var makeRoute = require('./lib/route');
 var methods = require('methods');
-var createInjector = require('./lib/injector');
 methods.push('all');
+
+var createInjector = require('./lib/injector');
+var reqExt = require('./lib/request');
+var resExt = require('./lib/response');
 
 module.exports = function() {
     var app = function(req, res, next) {
+        app.monkey_patch(req, res);
         app.handle(req, res, next);
     };
 
@@ -14,6 +18,7 @@ module.exports = function() {
         var index = 0;
         var stack = this.stack;
         var restore_url = null;
+        var restore_app = null;
         function next(err) {
             var layer = stack[index++];
             if (!layer) {
@@ -34,15 +39,23 @@ module.exports = function() {
                     req.url = restore_url;
                     restore_url = null;
                 }
+
+                if (restore_app != null) {
+                    req.app = restore_app;
+                    restore_app = null;
+                }
                 var path_param = layer.match(req.url);
                 if (path_param !== undefined) {
                     req.params = path_param.params;
                     var arity = layer.handle.length;
                     var func = layer.handle;
+                    req.app = app;
 
                     if (typeof func.handle === 'function') {
                         restore_url = req.url;
                         req.url = req.url.slice(path_param.path.length) || "/";
+                        restore_app = req.app;
+                        req.app = func;
                     } 
 
                     if (err) {
@@ -82,7 +95,7 @@ module.exports = function() {
 
     app.route = function(path) {
         var route = makeRoute();
-        var layer = new Layer(path, route);
+        var layer = new Layer(path, route, {end: true});
         this.stack.push(layer);
         return route;
     }
@@ -116,6 +129,14 @@ module.exports = function() {
         var injector = createInjector(handler, this);
         return injector;
     }
+
+    app.monkey_patch = function(req, res) {
+        req.__proto__ = reqExt;
+        res.__proto__ = resExt;
+        req.res = res;
+        res.req = req;
+    };
+        
 
 
     app.stack = [];
