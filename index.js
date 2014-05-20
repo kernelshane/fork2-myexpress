@@ -2,7 +2,8 @@ var http = require('http');
 var Layer = require('./lib/layer');
 var makeRoute = require('./lib/route');
 var methods = require('methods');
-methods.push('all');
+methods = methods.concat(['all']);
+
 
 var createInjector = require('./lib/injector');
 var reqExt = require('./lib/request');
@@ -24,7 +25,7 @@ module.exports = function() {
             if (!layer) {
                 if (err) {
                     if (out) out(err);
-                    res.statusCode = 500;
+                    res.statusCode = err.statusCode || 500;
                     res.end();
                 } else {
                     if (out) out();
@@ -106,7 +107,7 @@ module.exports = function() {
             route[method](handler);
             return this;
         }
-    })
+    });
 
     app.listen = function() {
         var server = http.createServer(this);
