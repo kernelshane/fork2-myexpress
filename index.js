@@ -20,12 +20,15 @@ module.exports = function() {
         var stack = this.stack;
         var restore_url = null;
         var restore_app = null;
+
         function next(err) {
             var layer = stack[index++];
             if (!layer) {
                 if (err) {
-                    if (out) out(err);
-                    res.statusCode = err.statusCode || 500;
+                    if (out) {
+                        out(err);
+                    }
+                    res.statusCode = res.statusCode || 500;
                     res.end();
                 } else {
                     if (out) out();
@@ -35,7 +38,7 @@ module.exports = function() {
                 return;
             }
 
-          try {
+            try {
                 if (restore_url != null) {
                     req.url = restore_url;
                     restore_url = null;
@@ -57,7 +60,7 @@ module.exports = function() {
                         req.url = req.url.slice(path_param.path.length) || "/";
                         restore_app = req.app;
                         req.app = func;
-                    } 
+                    }
 
                     if (err) {
                         if (arity === 4) {
@@ -70,13 +73,12 @@ module.exports = function() {
                     } else {
                         next();
                     }
-                }
-                else {
+                } else {
                     next(err);
                 }
-          } catch (e) {
-              next(e);
-          }
+            } catch (e) {
+                next(e);
+            }
         }
 
         next();
@@ -84,19 +86,21 @@ module.exports = function() {
     };
 
     app.use = function(path, func) {
-        if(!func)
+        if (!func)
             func = path
 
         var layer = new Layer(path, func);
         this.stack.push(layer);
-        
+
         return this;
     };
 
 
     app.route = function(path) {
         var route = makeRoute();
-        var layer = new Layer(path, route, {end: true});
+        var layer = new Layer(path, route, {
+            end: true
+        });
         this.stack.push(layer);
         return route;
     }
@@ -118,12 +122,12 @@ module.exports = function() {
         this._factories[name] = fn;
         this.stack.forEach(function(layer) {
             var func = layer.handle
-            if(typeof func.handle == 'function') {
-                if(!func._factories.hasOwnProperty(name))
+            if (typeof func.handle == 'function') {
+                if (!func._factories.hasOwnProperty(name))
                     func._factories[name] = fn;
             }
         });
-                
+
     };
 
     app.inject = function(handler) {
@@ -137,7 +141,7 @@ module.exports = function() {
         req.res = res;
         res.req = req;
     };
-        
+
 
 
     app.stack = [];
